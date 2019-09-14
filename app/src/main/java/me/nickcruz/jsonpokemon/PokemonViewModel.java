@@ -14,17 +14,21 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
+import org.json.JSONException;
+
 import java.util.ArrayList;
 import java.util.List;
 
+import me.nickcruz.jsonpokemon.api.GetPokemonEndpoint;
+
 public class PokemonViewModel extends AndroidViewModel {
 
-    private static final String API_BASE = "https://pokeapi.co/api/v2/";
-    private static final String GET_POKEMON = "pokemon/";
+    private static final String TAG = PokemonViewModel.class.getSimpleName();
 
     private final MutableLiveData<List<PokemonModel>> pokemon = new MutableLiveData<>((List<PokemonModel>) new ArrayList<PokemonModel>());
     private final MutableLiveData<String> error = new MutableLiveData<>();
-    
+
+    private final GetPokemonEndpoint getPokemonEndpoint = new GetPokemonEndpoint();
     private final GetPokemonResponseHandler getPokemonResponseHandler = new GetPokemonResponseHandler();
     private final ErrorHandler errorHandler = new ErrorHandler();
 
@@ -36,7 +40,7 @@ public class PokemonViewModel extends AndroidViewModel {
         List<PokemonModel> value = pokemon.getValue();
         if (value == null || value.isEmpty()) {
             Volley.newRequestQueue(getApplication())
-                    .add(new StringRequest(Request.Method.GET, API_BASE + GET_POKEMON, getPokemonResponseHandler, errorHandler));
+                    .add(new StringRequest(Request.Method.GET, getPokemonEndpoint.getURL(), getPokemonResponseHandler, errorHandler));
         }
     }
 
@@ -51,9 +55,14 @@ public class PokemonViewModel extends AndroidViewModel {
     private class GetPokemonResponseHandler implements Response.Listener<String> {
         @Override
         public void onResponse(String response) {
-            error.postValue(null);
             Log.v(PokemonViewModel.class.getSimpleName(), response);
-            // TODO(nick) parse json response
+            try {
+                pokemon.postValue(getPokemonEndpoint.parseResponse(response));
+                error.postValue(null);
+            } catch (JSONException e) {
+                Log.e(TAG, e.getMessage(), e);
+                error.postValue(e.getMessage());
+            }
         }
     }
 
